@@ -14,15 +14,11 @@ import io.wispforest.endec.format.jankson.JanksonSerializer;
 import io.wispforest.endec.impl.ReflectiveEndecBuilder;
 import io.wispforest.owo.Owo;
 import io.wispforest.owo.config.annotation.*;
-import io.wispforest.owo.config.ui.ConfigScreen;
-import io.wispforest.owo.config.ui.ConfigScreenProviders;
 import io.wispforest.owo.serialization.endec.MinecraftEndecs;
-import io.wispforest.owo.ui.core.Color;
 import io.wispforest.owo.util.NumberReflection;
 import io.wispforest.owo.util.Observable;
 import io.wispforest.owo.util.ReflectionUtils;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.loader.api.FabricLoader;
+import net.neoforged.fml.loading.FMLPaths;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
@@ -87,8 +83,6 @@ public abstract class ConfigWrapper<C> {
                 .registerSerializer(Identifier.class, (identifier, marshaller) -> new JsonPrimitive(identifier.toString()))
                 .registerDeserializer(JsonPrimitive.class, Identifier.class, (primitive, m) -> Identifier.tryParse(primitive.asString()));
 
-        builder.addEndec(Color.class, Color.RGBA_HEX_ENDEC);
-
         consumer.build(builder);
 
         this.jankson = janksonBuilder.build();
@@ -101,13 +95,8 @@ public abstract class ConfigWrapper<C> {
                     + " is already taken by an instance of class '" + KNOWN_CONFIG_CLASSES.get(this.name).getName() + "'");
         }
 
-        if (FabricLoader.getInstance().getEnvironmentType() == EnvType.CLIENT && clazz.isAnnotationPresent(Modmenu.class)) {
-            var modmenuAnnotation = clazz.getAnnotation(Modmenu.class);
-            ConfigScreenProviders.register(
-                    modmenuAnnotation.modId(),
-                    screen -> ConfigScreen.createWithCustomModel(Identifier.parse(modmenuAnnotation.uiModelId()), this, screen)
-            );
-        }
+        // The owo-ui config screen is not part of this reduced port, so the Modmenu
+        // screen registration is intentionally omitted. Values still load/save normally.
 
         try {
             this.initializeOptions(configAnnotation.saveOnModification());
@@ -232,7 +221,7 @@ public abstract class ConfigWrapper<C> {
      * @return The location to which this config is saved
      */
     public Path fileLocation() {
-        return FabricLoader.getInstance().getConfigDir().resolve(this.name + ".json5");
+        return FMLPaths.CONFIGDIR.get().resolve(this.name + ".json5");
     }
 
     /**

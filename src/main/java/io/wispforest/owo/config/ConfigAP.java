@@ -20,7 +20,7 @@ import java.util.*;
 
 @ApiStatus.Internal
 @SupportedAnnotationTypes("io.wispforest.owo.config.annotation.Config")
-@SupportedSourceVersion(SourceVersion.RELEASE_17)
+@SupportedSourceVersion(SourceVersion.RELEASE_25)
 public class ConfigAP extends AbstractProcessor {
 
     private static final String WRAPPER_TEMPLATE = """

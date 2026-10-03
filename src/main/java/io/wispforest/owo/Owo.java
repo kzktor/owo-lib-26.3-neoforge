@@ -1,25 +1,33 @@
 package io.wispforest.owo;
 
-import io.wispforest.owo.client.screens.MenuNetworkingInternals;
-import io.wispforest.owo.command.debug.OwoDebugCommands;
-import io.wispforest.owo.ops.LootOps;
-import io.wispforest.owo.text.CustomTextRegistry;
-import io.wispforest.owo.text.InsertingTextContent;
-import io.wispforest.owo.util.Wisdom;
-import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.loader.api.FabricLoader;
+import io.wispforest.owo.config.ConfigSynchronizer;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.neoforged.neoforge.event.server.ServerStoppedEvent;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static io.wispforest.owo.ops.TextOps.withColor;
 
-public class Owo implements ModInitializer {
+/**
+ * NeoForge entrypoint of the owo-lib config slice.
+ *
+ * <p>This is a reduced port: it carries only what the config subsystem needs
+ * (the {@code io.wispforest.owo.config} package and its supporting utilities).
+ * The owo-ui / braid / itemgroup / networking-UI modules are not ported, so the
+ * in-game config screen is not available — config values are read from and written
+ * to {@code config/<name>.json5} as usual.
+ */
+@Mod(Owo.MOD_ID)
+public class Owo {
 
     public static final String MOD_ID = "owo";
     /**
@@ -37,7 +45,7 @@ public class Owo implements ModInitializer {
         .append(Component.literal(" > ").withStyle(ChatFormatting.GRAY));
 
     static {
-        boolean debug = FabricLoader.getInstance().isDevelopmentEnvironment();
+        boolean debug = !FMLEnvironment.isProduction();
         if (System.getProperty("owo.debug") != null) debug = Boolean.getBoolean("owo.debug");
         if (Boolean.getBoolean("owo.forceDisableDebug")) {
             LOGGER.warn("Deprecated system property 'owo.forceDisableDebug=true' was used - use 'owo.debug=false' instead");
@@ -47,21 +55,11 @@ public class Owo implements ModInitializer {
         DEBUG = debug;
     }
 
-    @Override
-    @ApiStatus.Internal
-    public void onInitialize() {
-        LootOps.registerListener();
-        CustomTextRegistry.register("index", InsertingTextContent.CODEC);
-        MenuNetworkingInternals.init();
+    public Owo(IEventBus modBus) {
+        ConfigSynchronizer.init(modBus);
 
-        ServerLifecycleEvents.SERVER_STARTING.register(server -> SERVER = server);
-        ServerLifecycleEvents.SERVER_STOPPED.register(server -> SERVER = null);
-
-        Wisdom.spread();
-
-        if (!DEBUG) return;
-
-        OwoDebugCommands.register();
+        NeoForge.EVENT_BUS.addListener((final ServerStartingEvent event) -> SERVER = event.getServer());
+        NeoForge.EVENT_BUS.addListener((final ServerStoppedEvent event) -> SERVER = null);
     }
 
     @ApiStatus.Internal
@@ -85,7 +83,6 @@ public class Owo implements ModInitializer {
         return SERVER;
     }
 
-    // "eh it's only like 10-15 of them what's the big deal" - glisco, while writing the 52nd hardcoded Identifier.of("owo", ...)
     @ApiStatus.Internal
     public static Identifier id(String path) {
         return Identifier.fromNamespaceAndPath(MOD_ID, path);

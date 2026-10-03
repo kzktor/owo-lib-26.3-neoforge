@@ -1,6 +1,7 @@
 package io.wispforest.owo.config;
 
 import io.wispforest.endec.Endec;
+import io.wispforest.endec.util.EndecBuffer;
 import io.wispforest.endec.impl.ReflectiveEndecBuilder;
 import io.wispforest.owo.Owo;
 import io.wispforest.owo.config.annotation.RestartRequired;
@@ -166,7 +167,10 @@ public final class Option<T> {
      * @param buf The packet buffer to write to
      */
     void write(FriendlyByteBuf buf) {
-        buf.write(this.endec, this.value());
+        // FriendlyByteBuf receives EndecBuffer via mixin/serialization/FriendlyByteBufMixin at
+        // runtime. That interface injection is a Fabric Loom compile-time feature which ModDevGradle
+        // does not implement, so bridge through Object to reach the injected default methods.
+        ((EndecBuffer) (Object) buf).write(this.endec, this.value());
     }
 
     /**
@@ -178,7 +182,7 @@ public final class Option<T> {
      * the server's value otherwise
      */
     T read(FriendlyByteBuf buf) {
-        final var newValue = buf.read(this.endec);
+        final var newValue = ((EndecBuffer) (Object) buf).read(this.endec);
 
         if (!Objects.equals(newValue, this.value()) && this.backingField.hasAnnotation(RestartRequired.class)) {
             return newValue;
